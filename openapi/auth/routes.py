@@ -23,63 +23,62 @@ def register():
         - If the email already exists: A JSON response with status 400 (Bad Request) and an error message.
         - If an error occurs during registration: A JSON response with status 400 (Bad Request) and an error message.
     """
-    if request.method == "POST":
-        
-        try:
-            data = request.get_json()
-            name = data.get("name")
-            email = data.get("email")
-            password = data.get("password")
-            password_confirm = data.get("password_confirm")  # New field for password confirmation
+    if request.method != "POST":
+        return
+    try:
+        data = request.get_json()
+        name = data.get("name")
+        email = data.get("email")
+        password = data.get("password")
+        password_confirm = data.get("password_confirm")  # New field for password confirmation
 
-            # Check if password and password confirmation match
-            if password != password_confirm:
-                return jsonify(
-                    {
-                        "status": "error",
-                        "message": "Password confirmation does not match!"
-                    }
-                ), 400
-              
-            confirm_password = data.get("confirm_password")
-            if password != confirm_password:
-                return jsonify({"Error": "Password and confirm_password do not match"}), 400
-            hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-
-            email_exists = User.query.filter_by(email=email).first()
-            if email_exists:
-                return jsonify(
-                    {
-                        "status": "error", 
-                        "message": "Email already exists!"
-                    }
-                ), 400
-
-            new_user = User(name,email,hashed_password)
-            db.session.add(new_user)
-            db.session.commit()
-
-            session["user"]={"id":new_user.id}
-
+        # Check if password and password confirmation match
+        if password != password_confirm:
             return jsonify(
                 {
-                    "status": "success",
-                    "message": "User Created Succesfully",
-                    "data": new_user.format(),
+                    "status": "error",
+                    "message": "Password confirmation does not match!"
                 }
-            ),201
+            ), 400
 
-        except Exception as error:
-            print(f"{type(error).__name__}: {error}")
-            return (
-                jsonify(
-                    {
-                        "status": "failed",
-                        "message": "Internal Error: User not created",
-                    }
-                ),
-                500,
-            )
+        confirm_password = data.get("confirm_password")
+        if password != confirm_password:
+            return jsonify({"Error": "Password and confirm_password do not match"}), 400
+        hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+
+        if email_exists := User.query.filter_by(email=email).first():
+            return jsonify(
+                {
+                    "status": "error", 
+                    "message": "Email already exists!"
+                }
+            ), 400
+
+        new_user = User(name,email,hashed_password)
+        db.session.add(new_user)
+        db.session.commit()
+
+        session["user"]={"id":new_user.id}
+
+        return jsonify(
+            {
+                "status": "success",
+                "message": "User Created Succesfully",
+                "data": new_user.format(),
+            }
+        ),201
+
+    except Exception as error:
+        print(f"{type(error).__name__}: {error}")
+        return (
+            jsonify(
+                {
+                    "status": "failed",
+                    "message": "Internal Error: User not created",
+                }
+            ),
+            500,
+        )
 
 # pylint: disable=broad-exception-caught
 @auth.route("/@me")
@@ -88,9 +87,8 @@ def see_sess():
     get the details of current logged in user
     """
     # lets get the user id of the currently loggedin user using is_logged_in helper
-    user_id = is_logged_in(session) 
+    user_id = is_logged_in(session)
     print(user_id)
-    pass
 
 
 @auth.route('/logout')
@@ -111,23 +109,21 @@ def logout_user():
           and an error message indicating an internal server error.
     """
     try:
-        # Check if user is logged in
-        if is_logged_in(session):
-            # Clear session
-            session.clear()
-            return jsonify(
-                {
-                    "status": "success",
-                    "message": "User logged out Succesfully"
-                }
-            ), 200
-        else:
+        if not is_logged_in(session):
             return jsonify(
                 {
                     "status": "error",
                     "message": "User currently not logged in"
                 }
             ), 401
+        # Clear session
+        session.clear()
+        return jsonify(
+            {
+                "status": "success",
+                "message": "User logged out Succesfully"
+            }
+        ), 200
     except Exception as e:
         return jsonify(
             {
