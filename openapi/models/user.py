@@ -42,9 +42,7 @@ class User(db.Model):
 
 
     def __repr__(self):
-        return "Id: {}, name: {}, Email: {}".format(
-            self.id, self.name, self.email
-        )
+        return f"Id: {self.id}, name: {self.name}, Email: {self.email}"
 
     def format(self):
         """Return a dictionary representation of the User object"""
